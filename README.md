@@ -82,6 +82,32 @@ This exposes:
 - `bicli-dev`
   Runs directly from `src/index.ts` and always reflects current source code.
 
+## Getting Started
+
+Fastest path on Windows:
+
+1. copy `.env.example` to `.env`
+2. set `BI_REPO_ROOT` and `BE_INFORMED_HOME`
+3. run `npm install`
+4. run `npm run build`
+5. run `npm test`
+6. choose one path:
+   - CLI: run `node dist/src/index.js validate ...`
+   - MCP: run `node dist/src/index.js mcp-server`
+
+Recommended first CLI command:
+
+```bash
+node dist/src/index.js validate "C:\\path\\to\\file.bixml"
+```
+
+Recommended first MCP sequence:
+
+1. `find_repositories`
+2. `activate_repository`
+3. `prepare_repository`
+4. `answer_repository_question`
+
 ## CLI
 
 Validate one file:
@@ -202,7 +228,7 @@ If PI Agentic Harness accepts stdio MCP server definitions, point it at the same
 ```json
 {
   "command": "node",
-  "args": ["C:\\dev\\js\\bicli\\dist\\src\\index.js", "mcp-server"]
+  "args": ["C:\\path\\to\\bicli\\dist\\src\\index.js", "mcp-server"]
 }
 ```
 
@@ -256,6 +282,15 @@ Notes:
 - `trace_artifact_links` with `repository: "sample_beinformed_repo"` and `query: "Sample portal tab"`
 - `describe_case_model_patterns` with `repository: "sample_beinformed_repo"`
 - `create_interface_operation` with `repository: "sample_beinformed_repo"`, `project: "SC Sample - Interface definitions"`, `operationName: "getSample"`
+
+### Example MCP Questions
+
+- `Explain the repository architecture`
+- `Where is the main case model defined?`
+- `Which files define the web application structure?`
+- `Describe the case workflow pattern in project SC Sample`
+- `Trace the links for the sample portal tab`
+- `What does the interface layer look like in this repository?`
 
 For MCP-driven repository changes, prefer the direct bounded creation tools. The current end-to-end slices include interface-operation creation and bounded `_Case` form/event/question/data creation.
 
