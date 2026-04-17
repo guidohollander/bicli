@@ -24,28 +24,52 @@ This first version is intentionally narrower than Studio:
 - It validates element and attribute usage against shipped `*-mapping.xml` files.
 - It does not yet run full Be Informed project consistency checks.
 
-## Usage
+## Environment
+
+Copy `.env.example` to `.env` and adjust the values for the local machine.
+
+Recommended Windows collaborator setup:
+
+```env
+BI_REPO_ROOT=C:\repo
+BE_INFORMED_HOME=C:\bi\Be Informed AMS 23.2.9
+
+OPENROUTER_API_KEY=
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1/chat/completions
+OPENROUTER_MODEL=minimax/minimax-m2.7
+OPENROUTER_REASONING_EFFORT=medium
+OPENROUTER_SITE_URL=
+OPENROUTER_APP_NAME=Be Informed MCP
+```
+
+Notes:
+
+- `BE_INFORMED_HOME` is the preferred default installation path for CLI and MCP validation flows.
+- `BI_REPO_ROOT` controls repository discovery for MCP tools.
+- `OPENROUTER_API_KEY` is optional. Leave it empty for local grounded answers only.
+- The remaining `OPENROUTER_*` variables are the shared prefix configuration for cloud-augmented answers.
+
+## Installation
+
+Windows prerequisites:
+
+- `git`
+- Node.js `20+`
+- npm
+- a local Be Informed installation if you want CLI or MCP validation flows
+- one or more local Be Informed repositories if you want repository-model or MCP features
+
+Clone and install:
 
 ```bash
+git clone https://github.com/guidohollander/bicli.git
+cd bicli
+npm install
 npm run build
-node dist/src/index.js validate "C:\\path\\to\\file.bixml" --bi-home "C:\\bi\\Be Informed AMS 23.2.9"
+npm test
 ```
 
-Multiple files are supported:
-
-```bash
-node dist/src/index.js validate a.bixml b.bixml c.bixml --bi-home "C:\\bi\\Be Informed AMS 23.2.9"
-```
-
-For project-specific custom plugins, include the repo root:
-
-```bash
-node dist/src/index.js validate "C:\\repo\\gd_mts\\some-file.bixml" --bi-home "C:\\bi\\Be Informed AMS 23.2.9" --project-root "C:\\repo\\gd_mts"
-```
-
-## Global development command
-
-Install globally linked commands on Windows:
+Optional global development commands on Windows:
 
 ```bash
 npm run link:global
@@ -58,31 +82,75 @@ This exposes:
 - `bicli-dev`
   Runs directly from `src/index.ts` and always reflects current source code.
 
-Recommended development usage:
+## CLI
+
+Validate one file:
 
 ```bash
-bicli-dev validate "C:\\repo\\gd_mts\\some-file.bixml" --bi-home "C:\\bi\\Be Informed AMS 23.2.9" --project-root "C:\\repo\\gd_mts"
+node dist/src/index.js validate "C:\\path\\to\\file.bixml" --be-informed-home "C:\\bi\\Be Informed AMS 23.2.9"
 ```
 
-Repository modeling usage:
+Validate multiple files:
 
 ```bash
-bicli-dev inspect-repository "C:\\repo\\gd_mts" --max-artifacts 300
+node dist/src/index.js validate a.bixml b.bixml c.bixml --be-informed-home "C:\\bi\\Be Informed AMS 23.2.9"
 ```
+
+Validate with project-specific plugin discovery:
+
+```bash
+node dist/src/index.js validate "C:\\repo\\sample_beinformed_repo\\some-file.bixml" --project-root "C:\\repo\\sample_beinformed_repo"
+```
+
+Inspect a repository model:
+
+```bash
+node dist/src/index.js inspect-repository "C:\\repo\\sample_beinformed_repo" --max-artifacts 300
+```
+
+Trace one artifact:
+
+```bash
+node dist/src/index.js trace-artifact "C:\\repo\\sample_beinformed_repo" "Sample portal tab" --max-artifacts 800
+```
+
+Validate repository-model coherence:
+
+```bash
+node dist/src/index.js validate-repository-model "C:\\repo\\sample_beinformed_repo" --max-artifacts 1200
+```
+
+Lint repository conventions:
+
+```bash
+node dist/src/index.js lint "C:\\repo\\sample_beinformed_repo"
+```
+
+Create one bounded interface operation:
+
+```bash
+node dist/src/index.js create-interface-operation "C:\\repo\\sample_beinformed_repo" "SC Sample - Interface definitions" "getSample"
+```
+
+Create one bounded `_Case` workflow:
+
+```bash
+node dist/src/index.js create-case-form-workflow "C:\\repo\\sample_beinformed_repo" "SC Sample" "Register Sample" "Capture Sample details" "Confirm Sample data"
+```
+
+Create one bounded test BIXML file:
+
+```bash
+node dist/src/index.js create-test-bixml "C:\\repo\\sample_beinformed_repo" "SC Library" "Tests\\Example test artifact.bixml" --root-element attributegroup --label "Example test artifact"
+```
+
+## MCP
 
 Run the embedded MCP server over stdio:
 
 ```bash
-bicli-dev mcp-server
+node dist/src/index.js mcp-server
 ```
-
-Recommended MCP warm-up flow in Windsurf or other MCP clients:
-
-1. `activate_repository`
-2. `prepare_repository`
-3. ask architecture/modeling questions with `answer_repository_question` or `answer_complex_question`
-
-`prepare_repository` builds the persistent text index and warms repository-model caches so complex business and technical questions are slower cold but much faster once warm.
 
 The embedded MCP server now exposes:
 
@@ -92,83 +160,104 @@ The embedded MCP server now exposes:
 - pattern summaries for modeling, interaction, case model, and `_Case` workflows
 - bounded creation tools for interface operations, test BIXML, `_Case` workflows, web applications, tabs, case lists, and datastore lists
 
-```bash
-bicli-dev trace-artifact "C:\\repo\\gd_mts" "Cash register portal" --max-artifacts 800
+Recommended MCP warm-up flow:
+
+1. `find_repositories`
+2. `activate_repository`
+3. `prepare_repository`
+4. ask architecture/modeling questions with `answer_repository_question` or `answer_complex_question`
+
+`prepare_repository` builds the persistent text index and warms repository-model caches so complex business and technical questions are slower cold but much faster once warm.
+
+### Windsurf
+
+Windsurf MCP config:
+
+`C:\Users\<your-user>\.codeium\windsurf\mcp_config.json`
+
+Example:
+
+```json
+{
+  "mcpServers": {
+    "beinformed-repository-mcp": {
+      "command": "node",
+      "args": ["C:\\path\\to\\bicli\\dist\\src\\index.js", "mcp-server"]
+    }
+  }
+}
 ```
 
-These commands emit JSON and are intended to support:
+After updating the config:
 
-- version-aware repository modeling
-- project-role and dependency analysis
-- artifact tracing for debugging and maintenance
-- future repository-level consistency validation
+1. restart Windsurf
+2. select or activate a repository
+3. call `prepare_repository`
+4. ask grounded repository questions or use bounded creation tools
 
-Bounded write workflow for a real artifact slice:
+### PI Agentic Harness
 
-```bash
-bicli-dev create-interface-operation "C:\\repo\\gd_mts" "SC Foo - Interface definitions" "getFoo"
+If PI Agentic Harness accepts stdio MCP server definitions, point it at the same command:
+
+```json
+{
+  "command": "node",
+  "args": ["C:\\dev\\js\\bicli\\dist\\src\\index.js", "mcp-server"]
+}
 ```
 
-This creates a request attributeset, optional response attributeset, execute handler-group, sibling domain event, and updates a unique sibling service-application when that target is unambiguous. Re-running the command is idempotent for already-created artifacts.
+Use the same `.env` file so PI sees:
+
+- `BI_REPO_ROOT`
+- `BE_INFORMED_HOME`
+- optional `OPENROUTER_*` settings
+
+### Claude Code
+
+Claude Code supports MCP over stdio. The current documented approaches are:
+
+1. add the server with the `claude mcp add` command
+2. or check in a project-scoped `.mcp.json`
+
+Project-scoped add command:
 
 ```bash
-bicli-dev create-case-form-workflow "C:\\repo\\gd_mts" "SC Foo" "Register Foo" "Capture Foo details" "Confirm Foo data"
+claude mcp add --transport stdio --scope project beinformed-repository-mcp -- node C:\path\to\bicli\dist\src\index.js mcp-server
 ```
 
-This creates a bounded `_Case` workflow inside one existing project:
+Equivalent project-scoped `.mcp.json` at the repo root:
 
-- data attribute-set files under `Behavior/_Case/Data/Attribute sets`
-- a matching event under `Behavior/_Case/Events`
-- a matching form under `Behavior/_Case/Forms`
-
-The generated form uses `eventtypelink`, each event question points to `event#<attributeset-ref-id>`, and the event input role points to the generated data attribute sets.
-
-When the project already contains `_Case` forms and events, `bicli` now uses those as local templates to inherit project-specific shape such as:
-
-- form permissions
-- form `secure`
-- form `layout-hint`
-- event `store-type`
-- top-level `init-handlers` and `store-handlers` blocks
-
-You can also provide explicit templates:
-
-```bash
-bicli-dev create-case-form-workflow "C:\\repo\\gd_mts" "SC Foo" "Register Foo v2" "Capture Foo v2 details" "Confirm Foo v2 data" --template-form "Register Foo" --template-event "Register Foo"
+```json
+{
+  "mcpServers": {
+    "beinformed-repository-mcp": {
+      "command": "node",
+      "args": ["C:\\path\\to\\bicli\\dist\\src\\index.js", "mcp-server"],
+      "env": {
+        "BI_REPO_ROOT": "C:\\repo",
+        "BE_INFORMED_HOME": "C:\\bi\\Be Informed AMS 23.2.9"
+      }
+    }
+  }
+}
 ```
 
-Repository-model validation:
+Notes:
 
-```bash
-bicli-dev validate-repository-model "C:\\repo\\gd_mts" --max-artifacts 1200
-```
+- Claude Code project-scoped MCP config is intended for team sharing.
+- The official docs describe project-scoped servers in `.mcp.json`.
+- After adding the server, use `/mcp` inside Claude Code to inspect server status.
+- If `node` or `claude` is not on `PATH`, use the full executable path.
 
-Repository linting for modeling conventions:
+### MCP Example Calls
 
-```bash
-bicli-dev lint "C:\\repo\\gd_mts"
-```
+- `find_repositories` with `repositoryHint: "mts"`
+- `answer_repository_question` with `repository: "sample_beinformed_repo"` and `question: "Explain the repository architecture"`
+- `trace_artifact_links` with `repository: "sample_beinformed_repo"` and `query: "Sample portal tab"`
+- `describe_case_model_patterns` with `repository: "sample_beinformed_repo"`
+- `create_interface_operation` with `repository: "sample_beinformed_repo"`, `project: "SC Sample - Interface definitions"`, `operationName: "getSample"`
 
-With project-scoped markdown rules:
-
-```bash
-bicli-dev lint "C:\\repo\\gd_mts" --rules "C:\\dev\\js\\bicli\\docs\\canon\\lint-rules-example.md"
-```
-
-The first lint slice is intentionally convention-focused, not Studio-correctness-focused. It currently supports:
-
-- duplicate inline attribute detection
-- strict inline-attribute prohibition for selected project roles such as `interface`
-
-Bounded write operation for a test file in an existing project:
-
-```bash
-bicli-dev create-test-bixml "C:\\repo\\gd_mts" "SC Library" "Tests\\Example test artifact.bixml" --root-element attributegroup --label "Example test artifact"
-```
-
-This creates a minimal skeleton file for controlled experiments. It is intended to be safe and bounded, not to guarantee a deployable model by itself.
-
-For MCP-driven repository changes, prefer the direct bounded creation tools over generic intent interpretation. The current end-to-end slices include interface-operation creation and bounded `_Case` form/event/question/data creation.
+For MCP-driven repository changes, prefer the direct bounded creation tools. The current end-to-end slices include interface-operation creation and bounded `_Case` form/event/question/data creation.
 
 ## Windows executable
 

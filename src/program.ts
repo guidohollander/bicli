@@ -2,6 +2,7 @@ import { Command } from "commander";
 import path from "node:path";
 
 import { discoverProjectPluginRoots, loadInstallationMetadata } from "./beInformedInstallation.js";
+import { loadDotEnv, resolveBeInformedHome } from "./env.js";
 import { lintRepository } from "./lint.js";
 import { startMcpServer } from "./mcpServer.js";
 import { applyLintRefactor } from "./refactor.js";
@@ -40,6 +41,7 @@ const parseFormTasks = (values: string[]): Array<{ link: string; label: string; 
   });
 
 export const createProgram = (): Command => {
+  loadDotEnv();
   const program = new Command();
 
   program.name("bicli").description("Validate Be Informed BIXML syntax using vendor-derived rules");
@@ -54,13 +56,14 @@ export const createProgram = (): Command => {
   program
     .command("validate")
     .argument("<files...>", "One or more .bixml files")
-    .requiredOption("--bi-home <path>", "Path to the Be Informed installation")
+    .option("--be-informed-home, --bi-home <path>", "Path to the Be Informed installation")
     .option("--project-root <path>", "Optional project root used to discover custom plugin jars")
-    .action(async (files: string[], options: { biHome: string; projectRoot?: string }) => {
+    .action(async (files: string[], options: { beInformedHome?: string; biHome?: string; projectRoot?: string }) => {
+      const beInformedHome = resolveBeInformedHome(options.beInformedHome || options.biHome);
       const extraPluginRoots = options.projectRoot
         ? await discoverProjectPluginRoots(options.projectRoot)
         : [];
-      const metadata = await loadInstallationMetadata(options.biHome, extraPluginRoots);
+      const metadata = await loadInstallationMetadata(beInformedHome, extraPluginRoots);
       let hasFailure = false;
 
       for (const inputFile of files) {

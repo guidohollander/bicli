@@ -52,6 +52,7 @@ const createSampleRepository = async (): Promise<{ root: string; repoPath: strin
 
 afterEach(async () => {
   vi.resetModules();
+  delete process.env.BE_INFORMED_HOME;
 });
 
 describe("mcpInternals", () => {
@@ -249,5 +250,24 @@ describe("MCP protocol", () => {
     expect(payload.tool).toBe("create_test_bixml");
     expect(payload.summary.repositoryValidationOk).toBeDefined();
     expect(Array.isArray(payload.mutatedPaths)).toBe(true);
+  });
+
+  test("uses BE_INFORMED_HOME from env for installation inspection when no explicit path is passed", async () => {
+    process.env.BE_INFORMED_HOME = "C:\\bi\\Be Informed AMS 23.2.9";
+
+    const { processMcpMessage } = await import("../src/mcpServer.js");
+
+    const inspected = await processMcpMessage({
+      jsonrpc: "2.0",
+      id: 8,
+      method: "tools/call",
+      params: {
+        name: "inspect_installation",
+        arguments: {}
+      }
+    });
+    const payload = JSON.parse(inspected[0].result.content[0].text);
+    expect(payload.beInformedHome).toBe("C:\\bi\\Be Informed AMS 23.2.9");
+    expect(payload.biHome).toBe("C:\\bi\\Be Informed AMS 23.2.9");
   });
 });

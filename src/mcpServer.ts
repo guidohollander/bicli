@@ -4,6 +4,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 
 import { discoverProjectPluginRoots, loadInstallationMetadata } from "./beInformedInstallation.js";
+import { loadDotEnv, resolveBeInformedHome } from "./env.js";
 import { lintRepository } from "./lint.js";
 import {
   buildRepositoryModel,
@@ -21,6 +22,9 @@ import { validateBixmlFile } from "./validator.js";
 
 const SERVER_NAME = "beinformed-repository-mcp";
 const SERVER_VERSION = "0.2.0";
+
+loadDotEnv();
+
 const REPO_ROOT = process.env.BI_REPO_ROOT || "C:\\repo";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_BASE_URL =
@@ -430,11 +434,11 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        beInformedHome: { type: "string" },
         biHome: { type: "string" },
         projectRoot: { type: "string" },
         extraPluginRoots: { type: "array", items: { type: "string" } }
       },
-      required: ["biHome"],
       additionalProperties: false
     }
   },
@@ -444,6 +448,7 @@ const tools = [
     inputSchema: {
       type: "object",
       properties: {
+        beInformedHome: { type: "string" },
         biHome: { type: "string" },
         projectRoot: { type: "string" },
         extraPluginRoots: { type: "array", items: { type: "string" } },
@@ -453,7 +458,6 @@ const tools = [
         repositoryHint: { type: "string" },
         relativePaths: { type: "array", items: { type: "string" } }
       },
-      required: ["biHome"],
       additionalProperties: false
     }
   },
@@ -1550,14 +1554,19 @@ function listRepositoryVersions(repositoryHint) {
   });
 }
 
-function summarizeInstallation(args) {
-  const biHome = path.resolve(args.biHome);
-  const projectPluginRoots = args.projectRoot ? discoverProjectPluginRoots(args.projectRoot) : [];
+async function summarizeInstallation(args) {
+  const beInformedHome = path.resolve(resolveBeInformedHome(args.beInformedHome || args.biHome));
+  const projectPluginRoots = args.projectRoot ? await discoverProjectPluginRoots(args.projectRoot) : [];
   const extraPluginRoots = Array.isArray(args.extraPluginRoots) ? args.extraPluginRoots.map((value) => path.resolve(value)) : [];
-  const pluginRoots = [path.join(biHome, "plugins"), path.join(biHome, "dropins"), ...projectPluginRoots, ...extraPluginRoots]
+  const pluginRoots = [path.join(beInformedHome, "plugins"), path.join(beInformedHome, "dropins"), ...projectPluginRoots, ...extraPluginRoots]
     .filter((candidate, index, values) => values.indexOf(candidate) === index)
     .filter((candidate) => fs.existsSync(candidate));
-  return { biHome, projectRoot: args.projectRoot || null, pluginRoots };
+  return {
+    beInformedHome,
+    biHome: beInformedHome,
+    projectRoot: args.projectRoot || null,
+    pluginRoots
+  };
 }
 
 async function validateBixmlWithCore(args) {
@@ -1569,15 +1578,21 @@ async function validateBixmlWithCore(args) {
     ...relativePaths.map((relativePath) => path.resolve(repo.path, relativePath))
   ];
   const extraPluginRoots = [
-    ...(args.projectRoot ? discoverProjectPluginRoots(args.projectRoot) : []),
+    ...(args.projectRoot ? await discoverProjectPluginRoots(args.projectRoot) : []),
     ...((Array.isArray(args.extraPluginRoots) ? args.extraPluginRoots : []).map((value) => path.resolve(value)))
   ];
-  const metadata = await loadInstallationMetadata(args.biHome, extraPluginRoots);
+  const beInformedHome = resolveBeInformedHome(args.beInformedHome || args.biHome);
+  const metadata = await loadInstallationMetadata(beInformedHome, extraPluginRoots);
   const results = [];
   for (const filePath of resolvedFilePaths) {
     results.push(await validateBixmlFile(filePath, metadata));
   }
-  return { biHome: path.resolve(args.biHome), files: results, ok: results.every((result) => result.ok) };
+  return {
+    beInformedHome: path.resolve(beInformedHome),
+    biHome: path.resolve(beInformedHome),
+    files: results,
+    ok: results.every((result) => result.ok)
+  };
 }
 
 function extractMutationPaths(result) {
@@ -1837,7 +1852,7 @@ async function handleToolCall(name, args) {
       );
     }
     case "inspect_installation":
-      return formatTextResult(summarizeInstallation(args));
+      return formatTextResult(await summarizeInstallation(args));
     case "validate_bixml":
       return formatTextResult(await validateBixmlWithCore(args));
     case "lint": {
