@@ -1,0 +1,8 @@
+<knowledge-model>
+  <id>demo</id>
+  <label>Demo</label>
+  <time-version>
+    <id>tv-1</id>
+    <label>Initial</label>
+  </time-version>
+</knowledge-model>

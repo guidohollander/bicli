@@ -1,0 +1,17 @@
+node_modules/
+dist/
+release/
+.bicli-cache/
+.obsidian/
+
+*.log
+*.tmp
+*.tsbuildinfo
+
+.env
+
+Probe.class
+
+_cp.txt
+_sample100_validation.txt
+_sample100_validation_postbuild.txt
